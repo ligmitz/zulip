@@ -4712,7 +4712,7 @@ def do_create_realm(
     if Realm.objects.filter(string_id=string_id).exists():
         raise AssertionError(f"Realm {string_id} already exists!")
     if not server_initialized():
-        logging.info("Server not yet initialized. Creating the internal realm first.")
+        logging.info("Server not yet initialized. Creating the internal realm hack first.")
         create_internal_realm()
 
     kwargs: Dict[str, Any] = {}
