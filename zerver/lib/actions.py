@@ -762,6 +762,11 @@ def do_reactivate_user(user_profile: UserProfile, *, acting_user: Optional[UserP
                 }
             ).decode(),
         )
+
+        if user_profile.full_name.endswith(" (spammer)"):
+            check_change_full_name(
+                user_profile, user_profile.full_name.replace(" (spammer)", ""), acting_user
+            )
         do_increment_logging_stat(
             user_profile.realm,
             COUNT_STATS["active_users_log:is_bot:day"],
@@ -1162,7 +1167,11 @@ def get_active_bots_owned_by_user(user_profile: UserProfile) -> QuerySet:
 
 
 def do_deactivate_user(
-    user_profile: UserProfile, _cascade: bool = True, *, acting_user: Optional[UserProfile]
+    user_profile: UserProfile,
+    _cascade: bool = True,
+    spammer: Optional[bool] = None,
+    *,
+    acting_user: Optional[UserProfile],
 ) -> None:
     if not user_profile.is_active:
         return
@@ -1190,6 +1199,9 @@ def do_deactivate_user(
 
         delete_user_sessions(user_profile)
         clear_scheduled_emails([user_profile.id])
+
+        if spammer and not user_profile.full_name.endswith(" (spammer)"):
+            check_change_full_name(user_profile, user_profile.full_name + " (spammer)", acting_user)
 
         event_time = timezone_now()
         RealmAuditLog.objects.create(
@@ -4209,7 +4221,7 @@ def do_change_full_name(
 
 
 def check_change_full_name(
-    user_profile: UserProfile, full_name_raw: str, acting_user: UserProfile
+    user_profile: UserProfile, full_name_raw: str, acting_user: Optional[UserProfile]
 ) -> str:
     """Verifies that the user's proposed full name is valid.  The caller
     is responsible for checking check permissions.  Returns the new
