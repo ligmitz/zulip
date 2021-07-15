@@ -6,17 +6,25 @@ import requests
 import responses
 
 from version import ZULIP_VERSION
-from zerver.lib.actions import do_create_user
+from zerver.lib.actions import do_create_user, do_deactivate_user
 from zerver.lib.outgoing_webhook import (
     GenericOutgoingWebhookService,
     SlackOutgoingWebhookService,
     do_rest_call,
+    fail_with_message,
 )
 from zerver.lib.test_classes import ZulipTestCase
 from zerver.lib.topic import TOPIC_NAME
 from zerver.lib.url_encoding import near_message_url
 from zerver.lib.users import add_service
-from zerver.models import Recipient, Service, UserProfile, get_display_recipient, get_realm
+from zerver.models import (
+    Recipient,
+    Service,
+    UserProfile,
+    get_display_recipient,
+    get_realm,
+    get_user_profile_by_id,
+)
 
 
 class ResponseMock:
@@ -161,6 +169,43 @@ The webhook got a response with status code *400*.""",
 
         assert bot_user.bot_owner is not None
         self.assertEqual(bot_owner_notification.recipient_id, bot_user.bot_owner.recipient_id)
+
+    def test_408_error_with_deactivated_owner(self) -> None:
+        bot_user = self.example_user("outgoing_webhook_bot")
+        mock_event = self.mock_event(bot_user)
+        service_handler = GenericOutgoingWebhookService("token", bot_user, "service")
+
+        def deactivate_bot_owner_first(*args: Any) -> None:
+            bot_user = get_user_profile_by_id(args[0]["user_profile_id"])
+            assert bot_user.bot_owner is not None
+            do_deactivate_user(bot_user.bot_owner, acting_user=None)
+            fail_with_message(*args)
+
+        expected_fail = mock.patch(
+            "zerver.lib.outgoing_webhook.fail_with_message", side_effect=deactivate_bot_owner_first
+        )
+
+        with mock.patch.object(
+            service_handler, "session"
+        ) as session, expected_fail as mock_fail, self.assertLogs(level="WARNING") as m:
+            session.post.return_value = ResponseMock(408)
+            final_response = do_rest_call("", mock_event, service_handler)
+            assert final_response is not None
+
+            self.assertEqual(
+                m.output,
+                [
+                    f'WARNING:root:Message http://zulip.testserver/#narrow/stream/999-Verona/topic/Foo/near/ triggered an outgoing webhook, returning status code 408.\n Content of response (in quotes): "{final_response.text}"'
+                ],
+            )
+
+        self.assertTrue(mock_fail.called)
+
+        failure_message = self.get_last_message()
+        self.assertEqual(
+            failure_message.content,
+            "Failure! Third party responded with 408",
+        )
 
     def test_headers(self) -> None:
         bot_user = self.example_user("outgoing_webhook_bot")
