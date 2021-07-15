@@ -1166,10 +1166,28 @@ def get_active_bots_owned_by_user(user_profile: UserProfile) -> QuerySet:
     return UserProfile.objects.filter(is_bot=True, is_active=True, bot_owner=user_profile)
 
 
+def delete_deactivated_user_messages(user_profile: UserProfile, delete_policy: int) -> None:
+    """
+    Function to delete the messages of a user upon deactivation.
+    If the delete_policy is 1, we delete only the messages in
+    the public stream. When its value is 2, we delete all messages
+    sent by the user.
+    """
+    user_messages = Message.objects.filter(sender=user_profile)
+    if delete_policy == 1:
+        public_stream_messages = [
+            message for message in user_messages if message.is_public_stream_message()
+        ]
+        do_delete_messages(user_profile.realm, public_stream_messages)
+    elif delete_policy == 2:
+        do_delete_messages(user_profile.realm, user_messages)
+
+
 def do_deactivate_user(
     user_profile: UserProfile,
     _cascade: bool = True,
     spammer: Optional[bool] = None,
+    message_delete_action: Optional[int] = None,
     *,
     acting_user: Optional[UserProfile],
 ) -> None:
@@ -1202,6 +1220,9 @@ def do_deactivate_user(
 
         if spammer and not user_profile.full_name.endswith(" (spammer)"):
             check_change_full_name(user_profile, user_profile.full_name + " (spammer)", acting_user)
+
+        if message_delete_action is not None:
+            delete_deactivated_user_messages(user_profile, message_delete_action)
 
         event_time = timezone_now()
         RealmAuditLog.objects.create(
