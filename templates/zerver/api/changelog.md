@@ -11,6 +11,14 @@ below features are supported.
 
 ## Changes in Zulip 5.0
 
+**Feature level 82**
+
+* [`GET /server_settings`](/api/get-server-settings): The endpoint
+  now returns a RealmDeactivatedError when the request realm is deactivated
+  along with the realm's redirect domain if any.
+* The failure response for an endpoint involving a deactivated realm now
+  contain the realm's redirect domain if any.
+
 **Feature level 81**
 
 * `POST /users/me/enter-sends` has been removed. The `enter_sends`

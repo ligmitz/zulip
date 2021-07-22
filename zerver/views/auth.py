@@ -901,6 +901,12 @@ def check_server_incompatibility(request: HttpRequest) -> bool:
 @csrf_exempt
 def api_get_server_settings(request: HttpRequest) -> HttpResponse:
     # Log which client is making this request.
+
+    realm = get_realm_from_request(request)
+    if realm is not None:
+        if realm.deactivated:
+            raise RealmDeactivatedError(realm.deactivated_redirect)
+
     process_client(request, request.user, skip_update_user_activity=True)
     result = dict(
         authentication_methods=get_auth_backends_data(request),

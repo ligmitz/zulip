@@ -36,6 +36,7 @@ from social_django.strategy import DjangoStrategy
 from confirmation.models import Confirmation, create_confirmation_link
 from zerver.lib.actions import (
     change_user_is_active,
+    do_add_deactivated_redirect,
     do_create_realm,
     do_create_user,
     do_deactivate_realm,
@@ -4553,6 +4554,36 @@ class FetchAuthBackends(ZulipTestCase):
             # With ROOT_DOMAIN_LANDING_PAGE, homepage fails
             result = self.client_get("/api/v1/server_settings", subdomain="")
             self.assert_json_error_contains(result, "Subdomain required", 400)
+
+    def test_get_server_settings_with_deactivated_realm(self) -> None:
+        realm = get_realm("zulip")
+        realm_redirect = "test redirect"
+        do_deactivate_realm(realm, acting_user=None)
+        self.assertTrue(realm.deactivated)
+
+        result = self.client_get("/api/v1/server_settings", subdomain="zulip", HTTP_USER_AGENT="")
+        data = result.json()
+        self.assertEqual(
+            data,
+            {
+                "result": "error",
+                "msg": "This organization has been deactivated",
+                "code": "REALM_DEACTIVATED",
+            },
+        )
+
+        do_add_deactivated_redirect(realm, realm_redirect)
+        result = self.client_get("/api/v1/server_settings", subdomain="zulip", HTTP_USER_AGENT="")
+        data = result.json()
+        self.assertEqual(
+            data,
+            {
+                "result": "error",
+                "msg": "This organization has been deactivated",
+                "code": "REALM_DEACTIVATED",
+                "redirect_domain": realm_redirect,
+            },
+        )
 
 
 class TestTwoFactor(ZulipTestCase):

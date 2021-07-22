@@ -9926,6 +9926,14 @@ paths:
                             },
                           ],
                       }
+        "401":
+          description: |
+            A typical JSON response when the request organization is deactivated and has a redirect domain.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/RealmDeactivatedError"
   /settings:
     patch:
       operationId: update-settings
