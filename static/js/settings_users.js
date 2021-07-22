@@ -439,8 +439,9 @@ function confirm_deactivation(row, user_id, status_field) {
                 row_deactivate_button.text($t({defaultMessage: "Deactivate"}));
             },
         };
+        const is_spammer = JSON.stringify($("#spammer-checkbox :checkbox").prop("checked"));
         const url = "/json/users/" + encodeURIComponent(user_id);
-        settings_ui.do_settings_change(channel.del, url, {}, status_field, opts);
+        settings_ui.do_settings_change(channel.del, url, {spammer: is_spammer}, status_field, opts);
     }
 
     confirm_dialog.launch({
