@@ -12886,14 +12886,18 @@ components:
               "code": "REALM_DEACTIVATED",
               "msg": "This organization is deactivated",
               "result": "error",
+              "redirect_domain": "http://realm-abc.com:9991/",
             }
           description: |
             ## Realm deactivated
 
             **Changes**: These errors used the HTTP 403 status code
               before Zulip 5.0 (feature level 76).
+              The response dict now contain `redirect_domain` field
+              for the deactivated realm if present as part of Zulip 5.0
+              (feature level 82).
 
-            A typical failed json response for when user's organization is deactivated
+            A typical failed json response for when the organization is deactivated
 
   ###################
   # Shared responses

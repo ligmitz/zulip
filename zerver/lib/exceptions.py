@@ -301,9 +301,20 @@ class UserDeactivatedError(AuthenticationFailedError):
 class RealmDeactivatedError(AuthenticationFailedError):
     code: ErrorCode = ErrorCode.REALM_DEACTIVATED
 
+    def __init__(self, redirect_uri: Optional[str] = None) -> None:
+        self.redirect_uri = redirect_uri
+
     @staticmethod
     def msg_format() -> str:
         return _("This organization has been deactivated")
+
+    @property
+    def data(self) -> Dict[str, Any]:
+        data_dict = super().data
+        if self.redirect_uri is not None:
+            data_dict["redirect_domain"] = self.redirect_uri
+
+        return data_dict
 
 
 class PasswordAuthDisabledError(AuthenticationFailedError):
