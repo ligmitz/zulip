@@ -299,7 +299,7 @@ class Command(BaseCommand):
             # Start by clearing all the data in our database
             clear_database()
 
-            # Create our three default realms
+            # Create our three default realms and a deactivated realm
             # Could in theory be done via zerver.lib.actions.do_create_realm, but
             # welcome-bot (needed for do_create_realm) hasn't been created yet
             create_internal_realm()
@@ -319,6 +319,19 @@ class Command(BaseCommand):
             zulip_realm.notifications_stream.name = "Verona"
             zulip_realm.notifications_stream.description = "A city in Italy"
             zulip_realm.notifications_stream.save(update_fields=["name", "description"])
+
+            deactivated_realm = do_create_realm(
+                string_id="deactivated",
+                name="Deactivated Zulip Dev",
+                emails_restricted_to_domains=False,
+                invite_required=False,
+                plan_type=Realm.SELF_HOSTED,
+                org_type=Realm.ORG_TYPES["business"]["id"],
+            )
+            RealmDomain.objects.create(realm=deactivated_realm, domain="deactivated.zulipdev.com")
+            deactivated_realm.deactivated = True
+            deactivated_realm.deactivated_redirect = "deactivated.selfhost.com"
+            deactivated_realm.save(update_fields=["deactivated", "deactivated_redirect"])
 
             if options["test_suite"]:
                 mit_realm = do_create_realm(
